@@ -138,12 +138,14 @@ function Get-Claim {
         Policy   = $tbPolicy.Text.Trim()
         From     = $tbFrom.Text.Trim().ToUpper()
         To       = $tbTo.Text.Trim().ToUpper()
+        ReturnPlace = $tbReturnPlace.Text.Trim()
         Out      = $dpOut.Value.Date
         Back     = $dpBack.Value.Date
         DocDelay = [int]$nuDelay.Value
         MailDelay= [int]$nuMailDelay.Value
         Cause    = $tbCause.Text.Trim()
     }
+    if ([string]::IsNullOrWhiteSpace($c.ReturnPlace)) { $c.ReturnPlace = 'Singapore' }
     $t = [datetime]::ParseExact($tbDep.Text.Trim(), 'HH:mm', $Inv)
     $c.SchedDep = $c.Back.Add($t.TimeOfDay)
     $c.RevDep = $c.SchedDep.AddHours($c.DocDelay)
@@ -160,7 +162,7 @@ function Build-Files($c, [string]$Folder, $Include) {
         Write-ClaimPdf (Join-Path $Folder 'claim-form.pdf') 'Flight-delay claim form' @(
             @{K = 'Claimant'; V = $c.Name }, @{K = 'Policy reference'; V = $c.Policy },
             @{K = 'Claim type'; V = 'Flight delay' },
-            @{K = 'Return home'; V = $c.Back.ToString('dddd d MMMM yyyy', $Inv) },
+            @{K = ('Return to ' + $c.ReturnPlace); V = $c.Back.ToString('dddd d MMMM yyyy', $Inv) },
             @{Gap = $true }, @{P = 'Affected flights' }, @{Gap = $true }, @{Table = $flights })
     }
     foreach ($bp in @(@('sc101', 'SC101', $c.Out, $c.From, $c.To), @('sc202', 'SC202', $c.Back, $c.To, $c.From))) {
@@ -266,7 +268,7 @@ function Invoke-Generate([bool]$Email) {
 # ---------------------------------------------------------------- UI
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'SureCover Tester'
-$form.Size = New-Object System.Drawing.Size(760, 720)
+$form.Size = New-Object System.Drawing.Size(760, 760)
 $form.StartPosition = 'CenterScreen'
 $form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $form.FormBorderStyle = 'FixedDialog'; $form.MaximizeBox = $false
@@ -305,39 +307,40 @@ Add-Label 'SC101 out' 16 124;         $dpOut = Add-Date 130 124
 Add-Label 'SC202 back' 370 124;       $dpBack = Add-Date 450 124
 Add-Label 'SC202 departs' 16 158;     $tbDep = Add-Box 130 158 60 '11:40'
 Add-Label 'Delay cause' 370 158;      $tbCause = Add-Box 450 158 270
-Add-Label 'Delay in docs (h)' 16 192; $nuDelay = Add-Num 130 192 9
-Add-Label 'Delay in email (h)' 370 192; $nuMailDelay = Add-Num 490 192 9
+Add-Label 'Return place' 16 192;      $tbReturnPlace = Add-Box 130 192 220 'Singapore'
+Add-Label 'Delay in docs (h)' 16 226; $nuDelay = Add-Num 130 226 9
+Add-Label 'Delay in email (h)' 370 226; $nuMailDelay = Add-Num 490 226 9
 
-Add-Label 'Attachments' 16 230
+Add-Label 'Attachments' 16 264
 $clbFiles = New-Object System.Windows.Forms.CheckedListBox
-$clbFiles.Location = '130,230'; $clbFiles.Size = New-Object System.Drawing.Size(220, 130); $clbFiles.CheckOnClick = $true
+$clbFiles.Location = '130,264'; $clbFiles.Size = New-Object System.Drawing.Size(220, 130); $clbFiles.CheckOnClick = $true
 [void]$clbFiles.Items.AddRange($AllFiles)
 $form.Controls.Add($clbFiles)
 
-Add-Label 'To' 16 376;      $tbTo2 = Add-Box 130 376 590 $DefaultRecipient
-Add-Label 'Subject' 16 410; $tbSubject = Add-Box 130 410 590
-Add-Label 'Body' 16 444
+Add-Label 'To' 16 410;      $tbTo2 = Add-Box 130 410 590 $DefaultRecipient
+Add-Label 'Subject' 16 444; $tbSubject = Add-Box 130 444 590
+Add-Label 'Body' 16 478
 $tbBody = New-Object System.Windows.Forms.TextBox
-$tbBody.Location = '130,444'; $tbBody.Size = New-Object System.Drawing.Size(590, 140)
+$tbBody.Location = '130,478'; $tbBody.Size = New-Object System.Drawing.Size(590, 140)
 $tbBody.Multiline = $true; $tbBody.ScrollBars = 'Vertical'
 $form.Controls.Add($tbBody)
 $btnText = New-Object System.Windows.Forms.Button
-$btnText.Text = 'Refresh text'; $btnText.Location = '16,470'; $btnText.Width = 100
+$btnText.Text = 'Refresh text'; $btnText.Location = '16,504'; $btnText.Width = 100
 $form.Controls.Add($btnText)
 
 $chkSend = New-Object System.Windows.Forms.CheckBox
-$chkSend.Text = 'Send immediately (skip review)'; $chkSend.Location = '130,596'; $chkSend.AutoSize = $true
+$chkSend.Text = 'Send immediately (skip review)'; $chkSend.Location = '130,630'; $chkSend.AutoSize = $true
 $form.Controls.Add($chkSend)
 
 $btnFiles = New-Object System.Windows.Forms.Button
-$btnFiles.Text = 'Generate files only'; $btnFiles.Location = '400,592'; $btnFiles.Width = 150
+$btnFiles.Text = 'Generate files only'; $btnFiles.Location = '400,626'; $btnFiles.Width = 150
 $form.Controls.Add($btnFiles)
 $btnMail = New-Object System.Windows.Forms.Button
-$btnMail.Text = 'Generate + email'; $btnMail.Location = '570,592'; $btnMail.Width = 150
+$btnMail.Text = 'Generate + email'; $btnMail.Location = '570,626'; $btnMail.Width = 150
 $form.Controls.Add($btnMail)
 
 $lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.Location = '16,636'; $lblStatus.Size = New-Object System.Drawing.Size(710, 36)
+$lblStatus.Location = '16,670'; $lblStatus.Size = New-Object System.Drawing.Size(710, 36)
 $lblStatus.ForeColor = [System.Drawing.Color]::DimGray
 $lblStatus.Text = "Files are saved under $OutRoot"
 $form.Controls.Add($lblStatus)

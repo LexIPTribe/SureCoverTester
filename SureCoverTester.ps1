@@ -199,10 +199,14 @@ function Build-Files($c, [string]$Folder, $Include) {
 function Update-EmailText {
     try { $c = Get-Claim } catch { return }
     $tbSubject.Text = "Flight delay claim - $($c.Name)"
+    $urgentText = ''
+    if ($chkUrgency.Checked) {
+        $urgentText = "`r`n`r`nThis delay has caused significant disruption, and I am frustrated by the impact. Please treat my claim as urgent and provide a prompt update on its status."
+    }
     $tbBody.Text = ("Dear SureCover team,`r`n`r`n" +
         "My return flight SC202 from $($c.To) to $($c.From) on $($c.Back.ToString('d MMMM', $Inv)) was delayed by $($c.MailDelay) hours because of $($c.Cause). " +
         "I'd like to claim under my travel policy $($c.Policy).`r`n`r`n" +
-        "Please find all the required documents attached to this email.`r`n`r`n" +
+        "Please find all the required documents attached to this email." + $urgentText + "`r`n`r`n" +
         "Kind regards,`r`n$($c.Name)")
 }
 
@@ -268,7 +272,7 @@ function Invoke-Generate([bool]$Email) {
 # ---------------------------------------------------------------- UI
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'SureCover Tester'
-$form.Size = New-Object System.Drawing.Size(760, 760)
+$form.Size = New-Object System.Drawing.Size(760, 800)
 $form.StartPosition = 'CenterScreen'
 $form.Font = New-Object System.Drawing.Font('Segoe UI', 9)
 $form.FormBorderStyle = 'FixedDialog'; $form.MaximizeBox = $false
@@ -328,19 +332,23 @@ $btnText = New-Object System.Windows.Forms.Button
 $btnText.Text = 'Refresh text'; $btnText.Location = '16,504'; $btnText.Width = 100
 $form.Controls.Add($btnText)
 
+$chkUrgency = New-Object System.Windows.Forms.CheckBox
+$chkUrgency.Text = 'Add frustration and urgency to email'; $chkUrgency.Location = '130,630'; $chkUrgency.AutoSize = $true
+$form.Controls.Add($chkUrgency)
+
 $chkSend = New-Object System.Windows.Forms.CheckBox
-$chkSend.Text = 'Send immediately (skip review)'; $chkSend.Location = '130,630'; $chkSend.AutoSize = $true
+$chkSend.Text = 'Send immediately (skip review)'; $chkSend.Location = '130,664'; $chkSend.AutoSize = $true
 $form.Controls.Add($chkSend)
 
 $btnFiles = New-Object System.Windows.Forms.Button
-$btnFiles.Text = 'Generate files only'; $btnFiles.Location = '400,626'; $btnFiles.Width = 150
+$btnFiles.Text = 'Generate files only'; $btnFiles.Location = '400,660'; $btnFiles.Width = 150
 $form.Controls.Add($btnFiles)
 $btnMail = New-Object System.Windows.Forms.Button
-$btnMail.Text = 'Generate + email'; $btnMail.Location = '570,626'; $btnMail.Width = 150
+$btnMail.Text = 'Generate + email'; $btnMail.Location = '570,660'; $btnMail.Width = 150
 $form.Controls.Add($btnMail)
 
 $lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.Location = '16,670'; $lblStatus.Size = New-Object System.Drawing.Size(710, 36)
+$lblStatus.Location = '16,704'; $lblStatus.Size = New-Object System.Drawing.Size(710, 36)
 $lblStatus.ForeColor = [System.Drawing.Color]::DimGray
 $lblStatus.Text = "Files are saved under $OutRoot"
 $form.Controls.Add($lblStatus)
@@ -348,6 +356,7 @@ $form.Controls.Add($lblStatus)
 $cbPreset.Add_SelectedIndexChanged({ Set-Preset $cbPreset.Text })
 $btnRandom.Add_Click({ Set-RandomPerson })
 $btnText.Add_Click({ Update-EmailText })
+$chkUrgency.Add_CheckedChanged({ Update-EmailText })
 $btnFiles.Add_Click({ Invoke-Generate $false })
 $btnMail.Add_Click({ Invoke-Generate $true })
 
